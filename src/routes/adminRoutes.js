@@ -1,39 +1,15 @@
-import express from "express";
-import * as adminController from "../controllers/adminController.js";
-import { verificarToken, verificarAdmin } from "../middlewares/auth.js";
+const express = require("express");
+const adminController = require("../controllers/adminController");
+const { verificarToken, verificarAdmin } = require("../middlewares/auth");
 
 const router = express.Router();
 
-// Ver pedidos pendientes
-router.get(
-  "/pending",
-  verificarToken,
-  verificarAdmin,
-  adminController.getPendingPedidos,
-);
+router.get("/pending", verificarToken, verificarAdmin, adminController.getPendingOrders);
+router.get("/enviados", verificarToken, verificarAdmin, adminController.getEnviadosOrders);
+router.put("/accept/:id", verificarToken, verificarAdmin, adminController.acceptOrder);
+router.put("/reject/:id", verificarToken, verificarAdmin, adminController.rejectOrder);
+router.put("/complete/:id", verificarToken, verificarAdmin, adminController.sendOrder);
+router.put("/deliver/:id", verificarToken, verificarAdmin, adminController.deliverOrder);
+router.get("/completed", verificarToken, verificarAdmin, adminController.getCompletedOrders);
 
-// Aceptar/Confirmar pedido
-router.put(
-  "/accept/:id",
-  verificarToken,
-  verificarAdmin,
-  adminController.acceptPedido,
-);
-
-// Rechazar pedido
-router.put(
-  "/reject/:id",
-  verificarToken,
-  verificarAdmin,
-  adminController.rejectPedido,
-);
-
-// Marcar como entregado
-router.put(
-  "/complete/:id",
-  verificarToken,
-  verificarAdmin,
-  adminController.completePedido,
-);
-
-export default router;
+module.exports = router;
