@@ -13,6 +13,22 @@ router.get(
   adminController.getPendingOrders
 );
 
+// Ver pedidos en camino (enviados)
+router.get(
+  "/enviados",
+  verificarToken,
+  verificarAdmin,
+  adminController.getEnviadosOrders
+);
+
+// Historial de entregados
+router.get(
+  "/completed",
+  verificarToken,
+  verificarAdmin,
+  adminController.getCompletedOrders
+);
+
 // Aceptar/Confirmar pedido (recibido -> confirmado)
 router.put(
   "/accept/:id",
@@ -29,12 +45,20 @@ router.put(
   adminController.rejectOrder
 );
 
-// Historial de entregados
-router.get(
-  "/completed",
+// Marcar como enviado/en camino (confirmado -> enCamino)
+router.put(
+  "/complete/:id",
   verificarToken,
   verificarAdmin,
-  adminController.getCompletedOrders
+  adminController.sendOrder
+);
+
+// Marcar como entregado (enCamino -> entregado)
+router.put(
+  "/deliver/:id",
+  verificarToken,
+  verificarAdmin,
+  adminController.deliverOrder
 );
 
 module.exports = router;

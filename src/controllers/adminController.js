@@ -1,132 +1,145 @@
-const Order = require("../models/Order");
-const User = require("../models/Users");
 
-// 1. OBTENER PEDIDOS PENDIENTES (Estado: recibido o confirmado sin repartidor)
+const Order = require("../models/Order");
+
+// GET /api/admin/pending - Pedidos pendientes y confirmados
 exports.getPendingOrders = async (req, res) => {
   try {
-    const pedidosPendientes = await Order.find({
-      estado: { $in: ["recibido", "confirmado"] },
-    })
-      .populate("clienteId", "nombre telefono direcciones")
-      .sort({ createdAt: -1 });
-    console.log(JSON.stringify(pedidosPendientes, null, 2));
-    res.json(pedidosPendientes);
+    const pedidos = await Order.find({
+      estado: { $in: ["recibido", "confirmado"] }
+    }).populate("clienteId");
+    res.json(pedidos);
   } catch (error) {
-    console.error("Error al obtener pedidos pendientes:", error);
-    res.status(500).json({
-      message: "Error al obtener pedidos pendientes",
-      error: error.message,
-    });
+    console.error("Error al obtener pedidos:", error);
+    res.status(500).json({ message: "Error al obtener pedidos" });
   }
 };
 
-// 2. CONFIRMAR PEDIDO (Envía WhatsApp al cliente)
+// GET /api/admin/enviados - Pedidos en camino
+exports.getEnviadosOrders = async (req, res) => {
+  try {
+    const pedidos = await Order.find({
+      estado: "enCamino"  // ← Estado correcto según tu schema
+    }).populate("clienteId");
+    res.json(pedidos);
+  } catch (error) {
+    console.error("Error al obtener pedidos en camino:", error);
+    res.status(500).json({ message: "Error al obtener pedidos en camino" });
+  }
+};
+
+// GET /api/admin/completed - Pedidos entregados
+exports.getCompletedOrders = async (req, res) => {
+  try {
+    const pedidos = await Order.find({
+      estado: "entregado"
+    }).populate("clienteId");
+    res.json(pedidos);
+  } catch (error) {
+    console.error("Error al obtener pedidos completados:", error);
+    res.status(500).json({ message: "Error al obtener pedidos completados" });
+  }
+};
+
+// PUT /api/admin/accept/:id - Aceptar pedido (recibido → confirmado)
 exports.acceptOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const pedido = await Order.findByIdAndUpdate(
       id,
       { estado: "confirmado" },
-      { new: true },
-    ).populate("clienteId", "nombre telefono");
+      { new: true }
+    ).populate("clienteId");
 
-    if (!pedido) {
-      return res.status(404).json({ message: "No se encontró el pedido." });
-    }
-
-    const telefono = pedido.clienteId.telefono.replace(/\D/g, "");
-    const mensaje = `🔥 ¡Hola ${pedido.clienteId.nombre}! Tu pedido ${pedido.folio} de Leños Rellenos ha sido CONFIRMADO y está en preparación. ¡Gracias por tu preferencia!`;
-    const whatsappUrl = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
-
-    res.json({
-      message: "¡Pedido confirmado con éxito!",
-      whatsappUrl,
-      pedido,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error al aceptar", error: error.message });
-  }
-};
-
-// 3. ASIGNAR REPARTIDOR (Envía WhatsApp al repartidor)
-exports.assignDelivery = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { repartidorId } = req.body;
-
-    const pedido = await Order.findById(id).populate(
-      "clienteId",
-      "nombre telefono",
-    );
     if (!pedido) {
       return res.status(404).json({ message: "Pedido no encontrado" });
     }
 
-    const repartidor = await User.findOne({
-      _id: repartidorId,
-      rol: "repartidor",
-    });
-    if (!repartidor) {
-      return res.status(404).json({ message: "Repartidor no válido" });
-    }
-
-    pedido.estado = "enCamino";
-    pedido.repartidorId = repartidorId;
-    await pedido.save();
-
-    // WhatsApp para el repartidor
-    const telRepartidor = repartidor.telefono.replace(/\D/g, "");
-    const direccion = pedido.direccion
-      ? `${pedido.direccion.calle}, ${pedido.direccion.colonia}`
-      : "Ver en la orden";
-    const referencia = pedido.direccion?.referencia || "Sin referencia";
-    const mensaje = `🚴 ¡Hola ${repartidor.nombre}! Se te asignó el pedido ${pedido.folio}.\n\n📍 Dirección: ${direccion}\n📝 Referencia: ${referencia}\n👤 Cliente: ${pedido.clienteId.nombre}\n📞 Tel: ${pedido.clienteId.telefono}\n💰 Total: $${pedido.total}`;
-    const whatsappUrl = `https://wa.me/${telRepartidor}?text=${encodeURIComponent(mensaje)}`;
-
-    res.json({
-      message: `Pedido asignado a ${repartidor.nombre}`,
-      whatsappUrl,
-      pedido,
-    });
+    const whatsappUrl = generarURLWhatsApp(pedido, "confirmado");
+    res.json({ message: "Pedido aceptado ✅", pedido, whatsappUrl });
   } catch (error) {
-    console.error("Error al asignar:", error);
-    res.status(500).json({ message: "Error al asignar", error: error.message });
+    console.error("Error al aceptar pedido:", error);
+    res.status(500).json({ message: "Error al aceptar pedido" });
   }
 };
 
-// 4. RECHAZAR/CANCELAR PEDIDO
+// PUT /api/admin/reject/:id - Rechazar/Cancelar pedido
 exports.rejectOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const pedido = await Order.findByIdAndUpdate(
       id,
-      { estado: "cancelado" },
-      { new: true },
-    );
+      { estado: "cancelado" },  // ← Usa "cancelado" según tu schema
+      { new: true }
+    ).populate("clienteId");
 
     if (!pedido) {
-      return res.status(404).json({ message: "Pedido no encontrado." });
+      return res.status(404).json({ message: "Pedido no encontrado" });
     }
 
-    res.json({ message: "El pedido ha sido cancelado.", pedido });
+    res.json({ message: "Pedido cancelado", pedido });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al cancelar", error: error.message });
+    console.error("Error al rechazar pedido:", error);
+    res.status(500).json({ message: "Error al rechazar pedido" });
   }
 };
 
-// 5. OBTENER PEDIDOS ENTREGADOS
-exports.getCompletedOrders = async (req, res) => {
+// PUT /api/admin/complete/:id - Enviar pedido (confirmado → enCamino)
+exports.sendOrder = async (req, res) => {
   try {
-    const entregados = await Order.find({ estado: "entregado" })
-      .populate("clienteId", "nombre")
-      .populate("repartidorId", "nombre")
-      .sort({ updatedAt: -1 });
-    res.json(entregados);
+    const { id } = req.params;
+    const pedido = await Order.findByIdAndUpdate(
+      id,
+      { estado: "enCamino" },  // ← Estado correcto
+      { new: true }
+    ).populate("clienteId");
+
+    if (!pedido) {
+      return res.status(404).json({ message: "Pedido no encontrado" });
+    }
+
+    const whatsappUrl = generarURLWhatsApp(pedido, "enCamino");
+    res.json({ message: "Pedido en camino 🚴", pedido, whatsappUrl });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al obtener historial de entregados" });
+    console.error("Error al enviar pedido:", error);
+    res.status(500).json({ message: "Error al enviar pedido" });
   }
+};
+
+// PUT /api/admin/deliver/:id - Entregar pedido (enCamino → entregado)
+exports.deliverOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pedido = await Order.findByIdAndUpdate(
+      id,
+      { 
+        estado: "entregado",
+        fechaEntrega: new Date()  // ← Registra fecha de entrega
+      },
+      { new: true }
+    ).populate("clienteId");
+
+    if (!pedido) {
+      return res.status(404).json({ message: "Pedido no encontrado" });
+    }
+
+    const whatsappUrl = generarURLWhatsApp(pedido, "entregado");
+    res.json({ message: "Pedido entregado ✅", pedido, whatsappUrl });
+  } catch (error) {
+    console.error("Error al entregar pedido:", error);
+    res.status(500).json({ message: "Error al entregar pedido" });
+  }
+};
+
+// Función auxiliar para WhatsApp
+const generarURLWhatsApp = (pedido, estado) => {
+  const telefono = pedido.clienteId?.telefono?.replace(/\D/g, "");
+  if (!telefono) return null;
+  
+  const mensajes = {
+    confirmado: `🔥 ¡Hola ${pedido.clienteId?.nombre}! Tu pedido #${pedido.folio} ha sido CONFIRMADO y lo estamos preparando.`,
+    enCamino: `🚴 ¡${pedido.clienteId?.nombre}! Tu pedido #${pedido.folio} ya va EN CAMINO.`,
+    entregado: `✅ ¡Gracias ${pedido.clienteId?.nombre}! Tu pedido #${pedido.folio} ha sido ENTREGADO. ¡Disfrútalo!`
+  };
+  
+  return `https://wa.me/${telefono}?text=${encodeURIComponent(mensajes[estado] || "")}`;
 };
