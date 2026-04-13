@@ -13,14 +13,6 @@ router.get(
   adminController.getPendingOrders
 );
 
-// Ver pedidos enviados (para confirmar entrega)
-router.get(
-  "/enviados",
-  verificarToken,
-  verificarAdmin,
-  adminController.getEnviadosOrders
-);
-
 // Aceptar/Confirmar pedido (recibido -> confirmado)
 router.put(
   "/accept/:id",
@@ -35,22 +27,6 @@ router.put(
   verificarToken,
   verificarAdmin,
   adminController.rejectOrder
-);
-
-// Marcar como enviado (confirmado -> enCamino)
-router.put(
-  "/complete/:id",
-  verificarToken,
-  verificarAdmin,
-  adminController.sendOrder
-);
-
-// Marcar como entregado (enCamino -> entregado)
-router.put(
-  "/deliver/:id",
-  verificarToken,
-  verificarAdmin,
-  adminController.deliverOrder
 );
 
 // Historial de entregados

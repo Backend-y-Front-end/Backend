@@ -28,7 +28,7 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, rol: user.rol },
-      process.env.JWT_SECRET || "TU_FIRMA_SECRETA_SUPER_SEGURA",
+      process.env._SECRET || "TU_FIRMA_SECRETA_SUPER_SEGURA",
       { expiresIn: "8h" },
     );
 

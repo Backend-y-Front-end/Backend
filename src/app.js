@@ -17,46 +17,39 @@ const deliveryRoutes = require("./routes/deliveryRoutes");
 
 const app = express();
 
-// 1. Conectar a la Base de Datos
+// Conectar a la Base de Datos
 connectDB();
 
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
-  }),
+  })
 );
-const allowedOrigins = [
-  "https://front-end-production-a2e6.up.railway.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
 
+// CORS - Funciona para local, Render y Railway
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Permitir requests sin origin (como Postman)
+      // Permitir requests sin origin (Postman, móvil, etc)
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Permitir todos por ahora para debug
-      }
+      // Permitir todos los orígenes (puedes restringir después)
+      callback(null, true);
     },
     credentials: true,
-  }),
+  })
 );
-app.use(morgan("dev"));
-app.use(express.json()); // <--- DEBE IR ANTES DE LAS RUTAS
 
-// 3. Definición de Rutas
+app.use(morgan("dev"));
+app.use(express.json());
+
+// Definición de Rutas
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/uploads", express.static("uploads"));
 
@@ -64,12 +57,12 @@ app.get("/", (req, res) => {
   res.json({ message: "API de Leños Rellenos funcionando" });
 });
 
-// 4. Manejo de 404
+// Manejo de 404
 app.use((req, res) => {
   res.status(404).json({ message: "Lo siento, esa ruta no existe." });
 });
 
-const PORT = process.env.PORT || 4000; // Railway usará process.env.PORT
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`✅ Servidor corriendo en puerto ${PORT}`);
 });
