@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   rol: {
     type: String,
-    enum: ["cliente", "admin"], // Eliminado "repartidor"
+    enum: ["cliente", "admin", "repartidor"],
     default: "cliente",
   },
   direcciones: [

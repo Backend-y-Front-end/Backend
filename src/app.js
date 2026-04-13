@@ -1,19 +1,19 @@
-import dotenv from "dotenv";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import { connectDB } from "./config/db.js";
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const connectDB = require("./config/db");
 
 // Importar Rutas
-import productRoutes from "./routes/productRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import inventoryRoutes from "./routes/inventoryRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import reportRoutes from "./routes/reportRoutes.js";
-
-dotenv.config();
+const productRoutes = require("./routes/productRoutes");
+const orderRoutes = require("./routes/orderRoutes");
+const userRoutes = require("./routes/userRoutes");
+const assignmentRoutes = require("./routes/assignmentRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const deliveryRoutes = require("./routes/deliveryRoutes");
 
 const app = express();
 
@@ -34,26 +34,29 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // Permitir requests sin origin (como Postman)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(null, true); // Permitir todos por ahora para debug
       }
     },
     credentials: true,
   }),
 );
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json()); // <--- DEBE IR ANTES DE LAS RUTAS
 
 // 3. Definición de Rutas
+app.use("/api/assignments", assignmentRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/delivery", deliveryRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/orders", orderRoutes);
 app.use("/uploads", express.static("uploads"));
 
@@ -66,7 +69,7 @@ app.use((req, res) => {
   res.status(404).json({ message: "Lo siento, esa ruta no existe." });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4000; // Railway usará process.env.PORT
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });

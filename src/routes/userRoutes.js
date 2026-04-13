@@ -6,14 +6,32 @@ const nodemailer = require("nodemailer");
 const User = require("../models/Users");
 const bcrypt = require("bcryptjs");
 
+// Almacenamiento temporal de códigos
 const codigosRecuperacion = new Map();
 
-// RUTAS PÚBLICAS
+// ========================================
+// 📌 RUTAS PÚBLICAS
+// ========================================
+
 router.post("/login", userController.login);
 router.post("/register", userController.register);
 
-// ELIMINADO: Ruta de repartidores
+// Obtener solo repartidores (para el selector de asignación)
+router.get("/repartidores", verificarToken, async (req, res) => {
+  try {
+    const repartidores = await User.find({
+      rol: "repartidor",
+      activo: true,
+    }).select("-password");
+    res.json(repartidores);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener repartidores" });
+  }
+});
 
+/**
+ * 1. ENVIAR CÓDIGO POR CORREO
+ */
 router.post("/olvide-password", async (req, res) => {
   const { correo } = req.body;
 
@@ -71,6 +89,9 @@ router.post("/olvide-password", async (req, res) => {
   }
 });
 
+/**
+ * 2. VERIFICAR CÓDIGO
+ */
 router.post("/verificar-codigo", async (req, res) => {
   const { correo, codigo } = req.body;
 
@@ -116,6 +137,9 @@ router.post("/verificar-codigo", async (req, res) => {
   }
 });
 
+/**
+ * 3. ACTUALIZAR CONTRASEÑA
+ */
 router.post("/reset-password", async (req, res) => {
   const { correo, nuevaPassword } = req.body;
 
@@ -158,7 +182,10 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-// RUTAS PROTEGIDAS (SOLO ADMIN)
+// ========================================
+// 🔒 RUTAS PROTEGIDAS (SOLO ADMIN)
+// ========================================
+
 router.post(
   "/registrar-staff",
   verificarToken,
@@ -167,10 +194,9 @@ router.post(
     try {
       let { nombre, telefono, password, rol, correo } = req.body;
 
-      // Solo permitir crear admins
-      if (rol !== "admin") {
+      if (!["admin", "repartidor"].includes(rol)) {
         return res.status(400).json({
-          message: "Rol inválido. Solo se permite crear administradores",
+          message: "Rol inválido. Solo se permite: admin o repartidor",
         });
       }
 
@@ -200,14 +226,14 @@ router.post(
         telefono: telefonoFormateado,
         correo,
         password: hashedPassword,
-        rol: "admin",
+        rol,
         activo: true,
       });
 
       await nuevoUsuario.save();
 
       res.status(201).json({
-        message: `ADMINISTRADOR registrado con éxito`,
+        message: `${rol.toUpperCase()} registrado con éxito`,
         user: {
           id: nuevoUsuario._id,
           nombre: nuevoUsuario.nombre,
