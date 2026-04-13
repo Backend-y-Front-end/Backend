@@ -1,15 +1,64 @@
+
 const express = require("express");
 const adminController = require("../controllers/adminController");
 const { verificarToken, verificarAdmin } = require("../middlewares/auth");
 
 const router = express.Router();
 
-router.get("/pending", verificarToken, verificarAdmin, adminController.getPendingOrders);
-router.get("/enviados", verificarToken, verificarAdmin, adminController.getEnviadosOrders);
-router.put("/accept/:id", verificarToken, verificarAdmin, adminController.acceptOrder);
-router.put("/reject/:id", verificarToken, verificarAdmin, adminController.rejectOrder);
-router.put("/complete/:id", verificarToken, verificarAdmin, adminController.sendOrder);
-router.put("/deliver/:id", verificarToken, verificarAdmin, adminController.deliverOrder);
-router.get("/completed", verificarToken, verificarAdmin, adminController.getCompletedOrders);
+// Ver pedidos pendientes (recibido + confirmado)
+router.get(
+  "/pending",
+  verificarToken,
+  verificarAdmin,
+  adminController.getPendingOrders
+);
+
+// Ver pedidos enviados (para confirmar entrega)
+router.get(
+  "/enviados",
+  verificarToken,
+  verificarAdmin,
+  adminController.getEnviadosOrders
+);
+
+// Aceptar/Confirmar pedido (recibido -> confirmado)
+router.put(
+  "/accept/:id",
+  verificarToken,
+  verificarAdmin,
+  adminController.acceptOrder
+);
+
+// Rechazar pedido
+router.put(
+  "/reject/:id",
+  verificarToken,
+  verificarAdmin,
+  adminController.rejectOrder
+);
+
+// Marcar como enviado (confirmado -> enCamino)
+router.put(
+  "/complete/:id",
+  verificarToken,
+  verificarAdmin,
+  adminController.sendOrder
+);
+
+// Marcar como entregado (enCamino -> entregado)
+router.put(
+  "/deliver/:id",
+  verificarToken,
+  verificarAdmin,
+  adminController.deliverOrder
+);
+
+// Historial de entregados
+router.get(
+  "/completed",
+  verificarToken,
+  verificarAdmin,
+  adminController.getCompletedOrders
+);
 
 module.exports = router;
